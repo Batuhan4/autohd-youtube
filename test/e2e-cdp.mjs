@@ -209,22 +209,17 @@ async function evaluate(cdp, sessionId, expression) {
   return response.result?.value;
 }
 
+function storageApiExpression() {
+  return `(globalThis.browser ?? globalThis.chrome).storage.sync`;
+}
+
 function setQualityExpression(quality) {
-  return `new Promise((resolve, reject) => {
-    chrome.storage.sync.set({ quality: ${JSON.stringify(quality)} }, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      chrome.storage.sync.get({ quality: null }, (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-        resolve(result.quality);
-      });
-    });
-  })`;
+  return `(async () => {
+    const storage = ${storageApiExpression()};
+    await storage.set({ quality: ${JSON.stringify(quality)} });
+    const result = await storage.get({ quality: null });
+    return result.quality;
+  })()`;
 }
 
 async function waitUntil(fn, { timeout = 20000, interval = 300 } = {}) {
@@ -357,7 +352,7 @@ async function main() {
         const value = await evaluate(
           cdp,
           popup.sessionId,
-          `new Promise((resolve) => chrome.storage.sync.get({ quality: null }, (result) => resolve(result.quality)))`
+          `(${storageApiExpression()}).get({ quality: null }).then((result) => result.quality)`
         );
         return value === 'tiny' ? value : null;
       });

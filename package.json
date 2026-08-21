@@ -1,0 +1,9 @@
+{
+  "name": "autohd-youtube",
+  "private": true,
+  "description": "Chrome extension that locks YouTube videos to a chosen quality. Runs only on youtube.com.",
+  "scripts": {
+    "test": "node --test test/quality.test.js",
+    "test:e2e": "node test/e2e-cdp.mjs"
+  }
+}

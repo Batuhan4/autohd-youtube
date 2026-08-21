@@ -52,16 +52,16 @@ There is no `tabs`, `<all_urls>`, cookies, webRequest, or background network acc
 
 ## How it works
 
-1. The popup writes the selected quality to `chrome.storage.sync`.
-2. An isolated content script copies that value onto `youtube.com` pages.
-3. A main-world script talks to YouTube’s player (`setPlaybackQualityRange`) so the setting actually sticks.
+1. The popup writes the selected quality with the promise-based `storage.sync` API (`browser` in Chrome 148+, `chrome` before that).
+2. An [isolated-world](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts#isolated_world) content script copies that value onto `youtube.com` pages.
+3. A [MAIN-world](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts) script talks to YouTube’s player (`setPlaybackQualityRange`) so the setting actually sticks.
 4. It re-applies on play, quality drift, and YouTube’s in-page navigation.
 
-Chrome 111+ is required for main-world content scripts.
+Requires **Chrome 120+**. Manifest V3, no service worker, no remote code.
 
 ## Development
 
-No build step and no npm install.
+No build step and no npm install. The extension uses Manifest V3 APIs from current [Chrome extension docs](https://developer.chrome.com/docs/extensions): promise `storage.sync`, static `content_scripts` with `world: "MAIN"`, and the `browser` namespace with a `chrome` fallback.
 
 ```bash
 node --test
@@ -69,7 +69,7 @@ node test/e2e-cdp.mjs
 python3 scripts/make-icons.py
 ```
 
-`test/e2e-cdp.mjs` launches a throwaway Chrome profile over the DevTools Protocol pipe, loads this unpacked extension with `Extensions.loadUnpacked`, then checks:
+`test/e2e-cdp.mjs` launches a throwaway Chrome profile over the DevTools Protocol pipe (`--remote-debugging-pipe` + `--enable-unsafe-extension-debugging`), loads this unpacked extension with [`Extensions.loadUnpacked`](https://chromedevtools.github.io/devtools-protocol/tot/Extensions/#method-loadUnpacked), then checks:
 
 - no injection on `example.com` / `github.com`
 - default 1080p on `youtube.com`

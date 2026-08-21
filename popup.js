@@ -1,5 +1,5 @@
-'use strict';
-
+const ext = globalThis.browser ?? globalThis.chrome;
+const AutoHD = globalThis.AutoHD;
 const form = document.getElementById('qualities');
 
 for (const option of AutoHD.OPTIONS) {
@@ -37,24 +37,27 @@ function selectQuality(quality) {
   }
 }
 
-const storage = globalThis.chrome?.storage?.sync;
+const storage = ext?.storage?.sync;
 
-form.addEventListener('change', (event) => {
+form.addEventListener('change', async (event) => {
   const target = event.target;
-  if (!(target instanceof HTMLInputElement) || !AutoHD.isOptionId(target.value)) {
+  if (!(target instanceof HTMLInputElement) || !AutoHD.isOptionId(target.value) || !storage) {
     return;
   }
-  storage?.set({ [AutoHD.STORAGE_KEY]: target.value });
+  try {
+    await storage.set({ [AutoHD.STORAGE_KEY]: target.value });
+  } catch {
+    // Sync storage can be unavailable if the profile is locked.
+  }
 });
 
 if (storage) {
-  storage.get({ [AutoHD.STORAGE_KEY]: AutoHD.DEFAULT_QUALITY }, (result) => {
-    if (chrome.runtime.lastError) {
-      selectQuality(AutoHD.DEFAULT_QUALITY);
-      return;
-    }
+  try {
+    const result = await storage.get({ [AutoHD.STORAGE_KEY]: AutoHD.DEFAULT_QUALITY });
     selectQuality(result[AutoHD.STORAGE_KEY]);
-  });
+  } catch {
+    selectQuality(AutoHD.DEFAULT_QUALITY);
+  }
 } else {
   selectQuality(AutoHD.DEFAULT_QUALITY);
 }

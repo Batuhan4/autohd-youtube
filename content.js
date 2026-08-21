@@ -1,5 +1,7 @@
 'use strict';
 
+const ext = globalThis.browser ?? globalThis.chrome;
+
 function publish(quality) {
   const next = AutoHD.isOptionId(quality) ? quality : AutoHD.DEFAULT_QUALITY;
   document.documentElement.dataset[AutoHD.DATASET_KEY] = next;
@@ -8,14 +10,23 @@ function publish(quality) {
 
 publish(AutoHD.DEFAULT_QUALITY);
 
-chrome.storage.sync.get({ [AutoHD.STORAGE_KEY]: AutoHD.DEFAULT_QUALITY }, (result) => {
-  if (chrome.runtime.lastError) {
+async function hydrate() {
+  if (!ext?.storage?.sync) {
     return;
   }
-  publish(result[AutoHD.STORAGE_KEY]);
-});
+  try {
+    const result = await ext.storage.sync.get({
+      [AutoHD.STORAGE_KEY]: AutoHD.DEFAULT_QUALITY
+    });
+    publish(result[AutoHD.STORAGE_KEY]);
+  } catch {
+    publish(AutoHD.DEFAULT_QUALITY);
+  }
+}
 
-chrome.storage.onChanged.addListener((changes, area) => {
+hydrate();
+
+ext?.storage?.onChanged.addListener((changes, area) => {
   if (area !== 'sync') {
     return;
   }
