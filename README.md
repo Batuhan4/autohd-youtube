@@ -65,8 +65,19 @@ No build step and no npm install.
 
 ```bash
 node --test
+node test/e2e-cdp.mjs
 python3 scripts/make-icons.py
 ```
+
+`test/e2e-cdp.mjs` launches a throwaway Chrome profile over the DevTools Protocol pipe, loads this unpacked extension with `Extensions.loadUnpacked`, then checks:
+
+- no injection on `example.com` / `github.com`
+- default 1080p on `youtube.com`
+- popup clicks persist through `chrome.storage` to the YouTube page
+- YouTube embeds on other sites stay untouched
+- a real watch page reports 1080p
+
+Needs Chrome 137+ (`google-chrome-stable` or set `CHROME_PATH`). Use `E2E_HEADED=1` to show the window.
 
 Then reload the extension on `chrome://extensions`.
 

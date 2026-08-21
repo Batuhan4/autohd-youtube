@@ -100,6 +100,15 @@ const AutoHD = (() => {
   };
 })();
 
-if (typeof module !== 'undefined' && module.exports) {
+globalThis.AutoHD = AutoHD;
+
+if (
+  typeof module === 'object' &&
+  module &&
+  module.exports &&
+  typeof process === 'object' &&
+  process.versions &&
+  process.versions.node
+) {
   module.exports = AutoHD;
 }

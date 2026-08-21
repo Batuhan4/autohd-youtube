@@ -1,13 +1,75 @@
 'use strict';
 
-(() => {
+const AutoHD = globalThis.AutoHD || {
+  DEFAULT_QUALITY: 'hd1080',
+  DATASET_KEY: 'autohdQuality',
+  EVENT_NAME: 'autohd-youtube-quality',
+  QUALITY_LEVELS: [
+    { id: 'highres', height: 4320 },
+    { id: 'hd2160', height: 2160 },
+    { id: 'hd1440', height: 1440 },
+    { id: 'hd1080', height: 1080 },
+    { id: 'hd720', height: 720 },
+    { id: 'large', height: 480 },
+    { id: 'medium', height: 360 },
+    { id: 'small', height: 240 },
+    { id: 'tiny', height: 144 }
+  ],
+  heightFromId(id) {
+    if (!id || id === 'highest' || id === 'auto') {
+      return 0;
+    }
+    const exact = this.QUALITY_LEVELS.find((level) => level.id === id);
+    if (exact) {
+      return exact.height;
+    }
+    const prefix = this.QUALITY_LEVELS.find((level) => id.startsWith(level.id));
+    return prefix ? prefix.height : 0;
+  },
+  heightFromLabel(label) {
+    const match = String(label || '').match(/(\d{3,4})\s*p/i);
+    return match ? Number(match[1]) : 0;
+  },
+  isOptionId(id) {
+    return (
+      id === 'highest' ||
+      this.QUALITY_LEVELS.some((level) => level.id === id)
+    );
+  },
+  pickQuality(preferred, available) {
+    const ranked = (available || [])
+      .filter((item) => item && item.id && item.id !== 'auto' && item.playable !== false)
+      .map((item) => ({
+        id: item.id,
+        height: Number(item.height) || this.heightFromLabel(item.label) || this.heightFromId(item.id)
+      }))
+      .filter((item) => item.height > 0)
+      .sort((a, b) => b.height - a.height);
+    if (!ranked.length) {
+      return null;
+    }
+    if (!preferred || preferred === 'highest') {
+      return ranked[0].id;
+    }
+    const target = this.heightFromId(preferred);
+    if (!target) {
+      return ranked[0].id;
+    }
+    const fit = ranked.find((item) => item.height <= target);
+    return (fit || ranked[ranked.length - 1]).id;
+  }
+};
+
+function autohdPlayerMain(AutoHD) {
   const MAX_APPLIES_PER_VIDEO = 24;
   const MENU_COOLDOWN_MS = 5000;
+  const API_COOLDOWN_MS = 500;
   const applyCounts = new Map();
   let generation = 0;
   let lastHref = location.href;
   let debounceTimer = 0;
   let lastMenuAttempt = 0;
+  let lastApiApply = 0;
   let menuTimer = 0;
 
   function preferredQuality() {
@@ -33,7 +95,11 @@
   }
 
   function isPlayerError(player) {
-    return player.classList.contains('ytp-error') || Boolean(player.querySelector('.ytp-error-content'));
+    if (player.classList.contains('ytp-error')) {
+      return true;
+    }
+    const error = player.querySelector('.ytp-error-content-wrap, .ytp-error-content');
+    return Boolean(error && isVisible(error));
   }
 
   function isVisible(element) {
@@ -286,14 +352,15 @@
 
     const key = videoKey(player);
     const count = applyCounts.get(key) || 0;
-    if (count >= MAX_APPLIES_PER_VIDEO) {
-      return;
-    }
-    if (isActivePlayback(player)) {
-      applyCounts.set(key, count + 1);
+    const now = Date.now();
+    if (now - lastApiApply >= API_COOLDOWN_MS && count < MAX_APPLIES_PER_VIDEO) {
+      lastApiApply = now;
+      if (isActivePlayback(player)) {
+        applyCounts.set(key, count + 1);
+      }
+      setPlayerQuality(player, target);
     }
 
-    setPlayerQuality(player, target);
     if (isActivePlayback(player) && actualQualityId(player) !== target) {
       scheduleMenuFallback(player, preferred, target);
     }
@@ -342,7 +409,7 @@
         }
       });
       player.addEventListener('onPlaybackQualityChange', () => {
-        applyToPlayer(player);
+        window.setTimeout(() => applyToPlayer(player), 400);
       });
     } catch {
       // Some player instances reject listeners until they finish setup.
@@ -416,4 +483,7 @@
   }).observe(document.documentElement, { childList: true, subtree: true });
 
   schedule();
-})();
+}
+
+document.documentElement.dataset.autohdBoot = 'started';
+autohdPlayerMain(AutoHD);

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AutoHD for YouTube",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Always play YouTube videos at the quality you choose. Runs only on youtube.com.",
   "minimum_chrome_version": "111",
   "homepage_url": "https://github.com/Batuhan4/autohd-youtube",
@@ -39,7 +39,7 @@
         "https://youtube.com/*",
         "https://m.youtube.com/*"
       ],
-      "js": ["quality.js", "player.js"],
+      "js": ["player.js"],
       "run_at": "document_start",
       "all_frames": false,
       "world": "MAIN"
