@@ -18,6 +18,13 @@ def rounded_rect(draw: ImageDraw.ImageDraw, box: list[int], radius: int, **kwarg
 
 
 def make_icon(size: int) -> Image.Image:
+    # Chrome Web Store wants ~96x96 artwork inside the 128 canvas (16px padding).
+    if size == 128:
+        art = make_icon(96)
+        canvas = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+        canvas.paste(art, (16, 16), art)
+        return canvas
+
     image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     pad = max(1, round(size * 0.06))

@@ -1,4 +1,4 @@
-# AutoHD for YouTube
+# AutoHD for YouTube™
 
 A tiny Chrome extension that keeps YouTube videos at the quality you pick.
 
@@ -27,7 +27,9 @@ If a video does not offer your choice, AutoHD selects the next-best available qu
 
 ## Install in Chrome
 
-The project is unpacked source. You load it locally:
+**From the Chrome Web Store** (after the listing is live): install from the store page, then pin AutoHD and pick a quality.
+
+**Load unpacked** for development:
 
 1. Clone this repository.
 2. Open `chrome://extensions`.
@@ -48,11 +50,14 @@ There is no `tabs`, `<all_urls>`, cookies, webRequest, or background network acc
 
 ## Privacy
 
+Full policy: [PRIVACY.md](PRIVACY.md). Short version:
+
 - No analytics, telemetry, or crash reporting.
 - No remote code.
 - No requests to third-party servers.
 - Your preference stays in `chrome.storage.sync` on your Google account / machine.
 - Content scripts are not injected into YouTube embeds on other sites.
+- The stored quality and On/Off values are used only to apply your YouTube playback choice (limited use).
 
 ## How it works
 
@@ -71,6 +76,8 @@ No build step and no npm install. The extension uses Manifest V3 APIs from curre
 node --test
 node test/e2e-cdp.mjs
 python3 scripts/make-icons.py
+python3 scripts/generate-store-assets.py
+bash scripts/pack-store.sh
 ```
 
 `test/e2e-cdp.mjs` launches a throwaway Chrome profile over the DevTools Protocol pipe (`--remote-debugging-pipe` + `--enable-unsafe-extension-debugging`), loads this unpacked extension with [`Extensions.loadUnpacked`](https://chromedevtools.github.io/devtools-protocol/tot/Extensions/#method-loadUnpacked), then checks:
@@ -96,4 +103,4 @@ YouTube Music, Studio, and `youtu.be` redirect landing pages are out of scope on
 
 [MIT](LICENSE)
 
-Not affiliated with YouTube or Google.
+YouTube is a trademark of Google LLC. Use of this trademark is subject to Google Permissions. AutoHD is not affiliated with YouTube or Google.
