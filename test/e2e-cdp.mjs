@@ -559,6 +559,102 @@ async function main() {
       await cdp.send('Target.closeTarget', { targetId: watch.targetId });
       return JSON.stringify({ dataset, player, afterPlay });
     });
+
+    await test('Highest option selects the top available rendition', async () => {
+      const popup = await openPage(cdp, `chrome-extension://${extensionId}/popup.html`);
+      await waitUntil(async () =>
+        evaluate(cdp, popup.sessionId, `Boolean(document.getElementById('quality-highest'))`)
+      );
+      await evaluate(cdp, popup.sessionId, `document.getElementById('quality-highest').click() || true`);
+      const stored = await waitUntil(async () => {
+        const value = await evaluate(
+          cdp,
+          popup.sessionId,
+          `(${storageApiExpression()}).get({ quality: null }).then((result) => result.quality)`
+        );
+        return value === 'highest' ? value : null;
+      });
+      await cdp.send('Target.closeTarget', { targetId: popup.targetId });
+
+      const watch = await openPage(cdp, WATCH_URL);
+      const dataset = await waitUntil(async () => {
+        const value = await evaluate(
+          cdp,
+          watch.sessionId,
+          `document.documentElement.dataset.autohdQuality || null`
+        );
+        return value === 'highest' ? value : null;
+      });
+
+      await evaluate(
+        cdp,
+        watch.sessionId,
+        `document.querySelector('video')?.play?.().catch(() => {})`
+      );
+
+      let lastInfo = null;
+      const applied = await waitUntil(async () => {
+        await evaluate(
+          cdp,
+          watch.sessionId,
+          `(() => {
+            const player = document.getElementById('movie_player');
+            const settings = player?.querySelector('.ytp-settings-button');
+            if (settings && settings.getAttribute('aria-expanded') !== 'true') {
+              settings.click();
+            }
+            return true;
+          })()`
+        );
+        const info = await evaluate(
+          cdp,
+          watch.sessionId,
+          `(() => {
+            const player = document.getElementById('movie_player');
+            if (!player) return { missing: true };
+            const qualityItem = [...player.querySelectorAll('.ytp-menuitem')].find((item) =>
+              /quality/i.test(item.textContent || '')
+            );
+            const levels = (player.getAvailableQualityLevels?.() || []).filter((id) => id && id !== 'auto');
+            return {
+              dataset: document.documentElement.dataset.autohdQuality || null,
+              bound: player.dataset.autohdBound || null,
+              pref: player.getUserPlaybackQualityPreference?.() || null,
+              current: player.getPlaybackQuality?.() || null,
+              preferred: player.getPreferredQuality?.() || null,
+              label: player.getPlaybackQualityLabel?.() || null,
+              menuQuality: qualityItem?.innerText?.replace(/\\s+/g, ' ').trim() || null,
+              topLevel: levels[0] || null,
+              levels
+            };
+          })()`
+        );
+        lastInfo = info;
+        if (!info || info.missing || !info.topLevel) {
+          return null;
+        }
+        const playingTop =
+          info.current === info.topLevel ||
+          /2160|4K|8K|highres/i.test(`${info.label} ${info.menuQuality}`);
+        return playingTop ? info : null;
+      }, { timeout: 18000, interval: 700 });
+
+      await screenshot(cdp, watch.sessionId, '/tmp/autohd-e2e-highest.png').catch(() => {});
+      await cdp.send('Target.closeTarget', { targetId: watch.targetId });
+
+      if (!applied) {
+        throw new Error(`Highest did not stick. last=${JSON.stringify(lastInfo)}`);
+      }
+      assertEqual(stored, 'highest', 'storage');
+      assertEqual(dataset, 'highest', 'dataset');
+      assert(applied.bound === '1', 'player bound');
+      const top = applied.topLevel;
+      assert(
+        applied.current === top || /2160|4K|8K/i.test(`${applied.label} ${applied.menuQuality}`),
+        `expected playing ${top}, got ${JSON.stringify(applied)}`
+      );
+      return JSON.stringify({ stored, dataset, top, applied });
+    });
   } finally {
     if (proc && !proc.killed) {
       proc.kill('SIGTERM');

@@ -182,8 +182,7 @@ function autohdPlayerMain(AutoHD) {
     return applied;
   }
 
-  function hintYouTubeStorage(preferred) {
-    const height = preferred === 'highest' ? 4320 : AutoHD.heightFromId(preferred);
+  function hintYouTubeStorage(height) {
     if (!height) {
       return;
     }
@@ -283,6 +282,9 @@ function autohdPlayerMain(AutoHD) {
   }
 
   function applyViaMenu(player, preferred) {
+    if (clickMatchingQuality(player, preferred)) {
+      return true;
+    }
     if (isMenuOpen(player)) {
       return false;
     }
@@ -338,10 +340,9 @@ function autohdPlayerMain(AutoHD) {
     }
 
     const preferred = preferredQuality();
-    hintYouTubeStorage(preferred);
-
     const available = listAvailable(player);
     const target = AutoHD.pickQuality(preferred, available);
+    hintYouTubeStorage(AutoHD.heightFromId(target) || (preferred === 'highest' ? 2160 : AutoHD.heightFromId(preferred)));
     if (!target) {
       return;
     }
