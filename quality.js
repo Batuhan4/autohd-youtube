@@ -2,8 +2,11 @@
 
 const AutoHD = (() => {
   const STORAGE_KEY = 'quality';
-  const DEFAULT_QUALITY = 'hd1080';
+  const ENABLED_KEY = 'enabled';
+  const DEFAULT_QUALITY = 'auto';
+  const DEFAULT_ENABLED = true;
   const DATASET_KEY = 'autohdQuality';
+  const DATASET_ENABLED_KEY = 'autohdEnabled';
   const EVENT_NAME = 'autohd-youtube-quality';
 
   const QUALITY_LEVELS = [
@@ -19,6 +22,7 @@ const AutoHD = (() => {
   ];
 
   const OPTIONS = [
+    { id: 'auto', label: 'Auto', hint: 'YouTube' },
     { id: 'highest', label: 'Highest', hint: 'Best available' },
     { id: 'hd2160', label: '2160p', hint: '4K' },
     { id: 'hd1440', label: '1440p', hint: '' },
@@ -26,11 +30,12 @@ const AutoHD = (() => {
     { id: 'hd720', label: '720p', hint: 'HD' },
     { id: 'large', label: '480p', hint: '' },
     { id: 'medium', label: '360p', hint: '' },
-    { id: 'tiny', label: '144p', hint: '' }
+    { id: 'tiny', label: '144p', hint: '' },
+    { id: 'lowest', label: 'Lowest', hint: 'Smallest' }
   ];
 
   function heightFromId(id) {
-    if (!id || id === 'highest' || id === 'auto') {
+    if (!id || id === 'highest' || id === 'lowest' || id === 'auto') {
       return 0;
     }
     const exact = QUALITY_LEVELS.find((level) => level.id === id);
@@ -64,13 +69,24 @@ const AutoHD = (() => {
       .sort((a, b) => b.height - a.height);
   }
 
+  function shouldForce(preferred) {
+    return isOptionId(preferred) && preferred !== 'auto';
+  }
+
   function pickQuality(preferred, available) {
+    if (preferred === 'auto') {
+      return null;
+    }
+
     const ranked = normalizeAvailable(available);
     if (!ranked.length) {
       return null;
     }
     if (!preferred || preferred === 'highest') {
       return ranked[0].id;
+    }
+    if (preferred === 'lowest') {
+      return ranked[ranked.length - 1].id;
     }
 
     const target = heightFromId(preferred);
@@ -86,17 +102,26 @@ const AutoHD = (() => {
     return OPTIONS.some((option) => option.id === id);
   }
 
+  function isEnabledValue(value) {
+    return value !== false && value !== '0' && value !== 0;
+  }
+
   return {
     STORAGE_KEY,
+    ENABLED_KEY,
     DEFAULT_QUALITY,
+    DEFAULT_ENABLED,
     DATASET_KEY,
+    DATASET_ENABLED_KEY,
     EVENT_NAME,
     QUALITY_LEVELS,
     OPTIONS,
     heightFromId,
     heightFromLabel,
+    shouldForce,
     pickQuality,
-    isOptionId
+    isOptionId,
+    isEnabledValue
   };
 })();
 

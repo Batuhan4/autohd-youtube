@@ -4,22 +4,26 @@ A tiny Chrome extension that keeps YouTube videos at the quality you pick.
 
 Open the popup, choose a quality, and every YouTube watch page uses that setting. No account, no cloud, no extra sites.
 
-![AutoHD popup with eight quality options](docs/popup.png)
+![AutoHD popup](docs/popup.png)
 
 **This extension only runs on `youtube.com`.** It cannot read or change any other website.
 
 ## Quality options
 
+- Auto (default) — YouTube picks
 - Highest available
 - 2160p (4K)
 - 1440p
-- 1080p (default)
+- 1080p
 - 720p
 - 480p
 - 360p
 - 144p
+- Lowest available
 
-If a video does not offer your choice, AutoHD selects the next-best available quality at or below it. Ads and homepage hover previews are left alone.
+The popup also has an **On/Off** switch (default On). Both the quality and the switch are saved in Chrome sync storage.
+
+If a video does not offer your choice, AutoHD selects the next-best available quality at or below it. Ads and homepage hover previews are left alone. Auto and Off leave YouTube in control.
 
 ## Install in Chrome
 
@@ -72,7 +76,8 @@ python3 scripts/make-icons.py
 `test/e2e-cdp.mjs` launches a throwaway Chrome profile over the DevTools Protocol pipe (`--remote-debugging-pipe` + `--enable-unsafe-extension-debugging`), loads this unpacked extension with [`Extensions.loadUnpacked`](https://chromedevtools.github.io/devtools-protocol/tot/Extensions/#method-loadUnpacked), then checks:
 
 - no injection on `example.com` / `github.com`
-- default 1080p on `youtube.com`
+- default Auto with the extension on
+- on/off toggle persists to YouTube pages
 - popup clicks persist through `chrome.storage` to the YouTube page
 - YouTube embeds on other sites stay untouched
 - a real watch page reports 1080p

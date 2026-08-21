@@ -8,8 +8,17 @@
   </head>
   <body>
     <header>
-      <h1>AutoHD</h1>
-      <p>YouTube quality</p>
+      <div class="title-row">
+        <div>
+          <h1>AutoHD</h1>
+          <p>YouTube quality</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="enabled" checked />
+          <span class="track" aria-hidden="true"></span>
+          <span class="switch-label">On</span>
+        </label>
+      </div>
     </header>
     <form id="qualities" role="radiogroup" aria-label="Playback quality"></form>
     <script src="quality.js"></script>

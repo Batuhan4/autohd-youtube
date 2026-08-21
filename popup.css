@@ -27,6 +27,74 @@ header {
   border-bottom: 1px solid var(--line);
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.track {
+  width: 28px;
+  height: 16px;
+  border-radius: 99px;
+  background: #3a332c;
+  position: relative;
+  flex: none;
+}
+
+.track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #c4b8a8;
+}
+
+.switch:has(input:checked) .track {
+  background: var(--gold);
+}
+
+.switch:has(input:checked) .track::after {
+  left: 14px;
+  background: #161210;
+}
+
+.switch:focus-within .track {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.switch-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 1.6em;
+}
+
+body.is-off form {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 h1 {
   margin: 0;
   font-size: 12px;

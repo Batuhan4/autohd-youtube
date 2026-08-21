@@ -1,8 +1,9 @@
 'use strict';
 
 const AutoHD = globalThis.AutoHD || {
-  DEFAULT_QUALITY: 'hd1080',
+  DEFAULT_QUALITY: 'auto',
   DATASET_KEY: 'autohdQuality',
+  DATASET_ENABLED_KEY: 'autohdEnabled',
   EVENT_NAME: 'autohd-youtube-quality',
   QUALITY_LEVELS: [
     { id: 'highres', height: 4320 },
@@ -16,7 +17,7 @@ const AutoHD = globalThis.AutoHD || {
     { id: 'tiny', height: 144 }
   ],
   heightFromId(id) {
-    if (!id || id === 'highest' || id === 'auto') {
+    if (!id || id === 'highest' || id === 'lowest' || id === 'auto') {
       return 0;
     }
     const exact = this.QUALITY_LEVELS.find((level) => level.id === id);
@@ -32,11 +33,19 @@ const AutoHD = globalThis.AutoHD || {
   },
   isOptionId(id) {
     return (
+      id === 'auto' ||
       id === 'highest' ||
+      id === 'lowest' ||
       this.QUALITY_LEVELS.some((level) => level.id === id)
     );
   },
+  shouldForce(preferred) {
+    return this.isOptionId(preferred) && preferred !== 'auto';
+  },
   pickQuality(preferred, available) {
+    if (preferred === 'auto') {
+      return null;
+    }
     const ranked = (available || [])
       .filter((item) => item && item.id && item.id !== 'auto' && item.playable !== false)
       .map((item) => ({
@@ -50,6 +59,9 @@ const AutoHD = globalThis.AutoHD || {
     }
     if (!preferred || preferred === 'highest') {
       return ranked[0].id;
+    }
+    if (preferred === 'lowest') {
+      return ranked[ranked.length - 1].id;
     }
     const target = this.heightFromId(preferred);
     if (!target) {
@@ -75,6 +87,14 @@ function autohdPlayerMain(AutoHD) {
   function preferredQuality() {
     const value = document.documentElement.dataset[AutoHD.DATASET_KEY];
     return AutoHD.isOptionId(value) ? value : AutoHD.DEFAULT_QUALITY;
+  }
+
+  function isEnabled() {
+    return document.documentElement.dataset[AutoHD.DATASET_ENABLED_KEY] !== '0';
+  }
+
+  function shouldApply() {
+    return isEnabled() && AutoHD.shouldForce(preferredQuality());
   }
 
   function isPreviewPlayer(player) {
@@ -268,6 +288,8 @@ function autohdPlayerMain(AutoHD) {
     let choice;
     if (preferred === 'highest') {
       choice = items[0];
+    } else if (preferred === 'lowest') {
+      choice = items[items.length - 1];
     } else {
       const target = AutoHD.heightFromId(preferred);
       choice = items.find((item) => item.height <= target) || items[items.length - 1];
@@ -334,15 +356,36 @@ function autohdPlayerMain(AutoHD) {
     }, 900);
   }
 
+  function restoreAuto(player) {
+    try {
+      if (typeof player.setPlaybackQualityRange === 'function') {
+        player.setPlaybackQualityRange('auto', 'auto');
+      }
+    } catch {
+      // Ignore.
+    }
+    try {
+      player.setPlaybackQuality?.('auto');
+    } catch {
+      // Ignore.
+    }
+  }
+
   function applyToPlayer(player) {
     if (isPreviewPlayer(player) || isAdPlaying(player) || isPlayerError(player)) {
+      return;
+    }
+
+    if (!shouldApply()) {
       return;
     }
 
     const preferred = preferredQuality();
     const available = listAvailable(player);
     const target = AutoHD.pickQuality(preferred, available);
-    hintYouTubeStorage(AutoHD.heightFromId(target) || (preferred === 'highest' ? 2160 : AutoHD.heightFromId(preferred)));
+    hintYouTubeStorage(
+      AutoHD.heightFromId(target) || (preferred === 'highest' ? 2160 : AutoHD.heightFromId(preferred))
+    );
     if (!target) {
       return;
     }
@@ -435,6 +478,12 @@ function autohdPlayerMain(AutoHD) {
   document.addEventListener(AutoHD.EVENT_NAME, () => {
     applyCounts.clear();
     lastMenuAttempt = 0;
+    if (!shouldApply()) {
+      for (const player of players()) {
+        restoreAuto(player);
+      }
+      return;
+    }
     schedule();
   });
 
@@ -469,10 +518,16 @@ function autohdPlayerMain(AutoHD) {
   new MutationObserver(() => {
     applyCounts.clear();
     lastMenuAttempt = 0;
+    if (!shouldApply()) {
+      for (const player of players()) {
+        restoreAuto(player);
+      }
+      return;
+    }
     schedule();
   }).observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['data-autohd-quality']
+    attributeFilter: ['data-autohd-quality', 'data-autohd-enabled']
   });
 
   new MutationObserver(() => {

@@ -328,18 +328,22 @@ async function main() {
     });
 
     let youtubePage;
-    await test('injects default 1080p on youtube.com', async () => {
+    await test('injects default Auto with the extension on', async () => {
       youtubePage = await openPage(cdp, 'https://www.youtube.com/');
-      const quality = await waitUntil(async () => {
+      const info = await waitUntil(async () => {
         const value = await evaluate(
           cdp,
           youtubePage.sessionId,
-          `document.documentElement.dataset.autohdQuality || null`
+          `{
+            quality: document.documentElement.dataset.autohdQuality || null,
+            enabled: document.documentElement.dataset.autohdEnabled || null
+          }`
         );
-        return value === 'hd1080' ? value : null;
+        return value.quality === 'auto' && value.enabled === '1' ? value : null;
       });
-      assertEqual(quality, 'hd1080', 'default quality');
-      return quality;
+      assertEqual(info.quality, 'auto', 'default quality');
+      assertEqual(info.enabled, '1', 'default enabled');
+      return JSON.stringify(info);
     });
 
     await test('popup click of 144p reaches chrome.storage and YouTube', async () => {
@@ -374,7 +378,7 @@ async function main() {
       return `storage=${stored} dataset=${dataset}`;
     });
 
-    await test('popup lists eight options and can switch to 2160p', async () => {
+    await test('popup lists Auto and Lowest and can switch to 2160p', async () => {
       const popup = await openPage(cdp, `chrome-extension://${extensionId}/popup.html`);
       const options = await waitUntil(async () => {
         const values = await evaluate(
@@ -382,9 +386,9 @@ async function main() {
           popup.sessionId,
           `[...document.querySelectorAll('input[name="quality"]')].map((el) => el.value)`
         );
-        return values?.length === 8 ? values : null;
+        return values?.length === 10 ? values : null;
       });
-      assert(options.includes('highest') && options.includes('hd1080'), 'options');
+      assert(options.includes('auto') && options.includes('lowest') && options.includes('highest'), 'options');
       await evaluate(cdp, popup.sessionId, `document.getElementById('quality-hd2160').click() || true`);
       const stored = await waitUntil(async () => {
         const value = await evaluate(cdp, popup.sessionId, setQualityExpression('hd2160'));
@@ -400,6 +404,51 @@ async function main() {
       });
       await cdp.send('Target.closeTarget', { targetId: popup.targetId });
       return `options=${options.join(',')} storage=${stored} dataset=${dataset}`;
+    });
+
+    await test('on/off toggle persists and reaches YouTube', async () => {
+      const popup = await openPage(cdp, `chrome-extension://${extensionId}/popup.html`);
+      await waitUntil(async () => evaluate(cdp, popup.sessionId, `Boolean(document.getElementById('enabled'))`));
+      const initiallyOn = await evaluate(cdp, popup.sessionId, `document.getElementById('enabled').checked`);
+      assertEqual(initiallyOn, true, 'default on');
+      await evaluate(cdp, popup.sessionId, `(() => {
+        const input = document.getElementById('enabled');
+        input.checked = false;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`);
+      const storedOff = await waitUntil(async () => {
+        const value = await evaluate(
+          cdp,
+          popup.sessionId,
+          `(${storageApiExpression()}).get({ enabled: true }).then((result) => result.enabled)`
+        );
+        return value === false ? 'off' : null;
+      });
+      const datasetOff = await waitUntil(async () => {
+        const value = await evaluate(
+          cdp,
+          youtubePage.sessionId,
+          `document.documentElement.dataset.autohdEnabled || null`
+        );
+        return value === '0' ? value : null;
+      });
+      await evaluate(cdp, popup.sessionId, `(() => {
+        const input = document.getElementById('enabled');
+        input.checked = true;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`);
+      const datasetOn = await waitUntil(async () => {
+        const value = await evaluate(
+          cdp,
+          youtubePage.sessionId,
+          `document.documentElement.dataset.autohdEnabled || null`
+        );
+        return value === '1' ? value : null;
+      });
+      await cdp.send('Target.closeTarget', { targetId: popup.targetId });
+      return `stored=${storedOff} off=${datasetOff} on=${datasetOn}`;
     });
 
     await test('youtube embed on a foreign page is not injected', async () => {

@@ -2,13 +2,22 @@
 
 const ext = globalThis.browser ?? globalThis.chrome;
 
-function publish(quality) {
-  const next = AutoHD.isOptionId(quality) ? quality : AutoHD.DEFAULT_QUALITY;
-  document.documentElement.dataset[AutoHD.DATASET_KEY] = next;
-  document.dispatchEvent(new CustomEvent(AutoHD.EVENT_NAME, { detail: { quality: next } }));
+const state = {
+  quality: AutoHD.DEFAULT_QUALITY,
+  enabled: AutoHD.DEFAULT_ENABLED
+};
+
+function publish() {
+  const quality = AutoHD.isOptionId(state.quality) ? state.quality : AutoHD.DEFAULT_QUALITY;
+  const enabled = AutoHD.isEnabledValue(state.enabled);
+  document.documentElement.dataset[AutoHD.DATASET_KEY] = quality;
+  document.documentElement.dataset[AutoHD.DATASET_ENABLED_KEY] = enabled ? '1' : '0';
+  document.dispatchEvent(
+    new CustomEvent(AutoHD.EVENT_NAME, { detail: { quality, enabled } })
+  );
 }
 
-publish(AutoHD.DEFAULT_QUALITY);
+publish();
 
 async function hydrate() {
   if (!ext?.storage?.sync) {
@@ -16,11 +25,14 @@ async function hydrate() {
   }
   try {
     const result = await ext.storage.sync.get({
-      [AutoHD.STORAGE_KEY]: AutoHD.DEFAULT_QUALITY
+      [AutoHD.STORAGE_KEY]: AutoHD.DEFAULT_QUALITY,
+      [AutoHD.ENABLED_KEY]: AutoHD.DEFAULT_ENABLED
     });
-    publish(result[AutoHD.STORAGE_KEY]);
+    state.quality = result[AutoHD.STORAGE_KEY];
+    state.enabled = result[AutoHD.ENABLED_KEY];
+    publish();
   } catch {
-    publish(AutoHD.DEFAULT_QUALITY);
+    publish();
   }
 }
 
@@ -30,9 +42,16 @@ ext?.storage?.onChanged.addListener((changes, area) => {
   if (area !== 'sync') {
     return;
   }
-  const change = changes[AutoHD.STORAGE_KEY];
-  if (!change) {
-    return;
+  let changed = false;
+  if (Object.hasOwn(changes, AutoHD.STORAGE_KEY)) {
+    state.quality = changes[AutoHD.STORAGE_KEY].newValue;
+    changed = true;
   }
-  publish(change.newValue);
+  if (Object.hasOwn(changes, AutoHD.ENABLED_KEY)) {
+    state.enabled = changes[AutoHD.ENABLED_KEY].newValue;
+    changed = true;
+  }
+  if (changed) {
+    publish();
+  }
 });
