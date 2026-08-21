@@ -1,0 +1,90 @@
+:root {
+  color-scheme: dark;
+  --bg: #161210;
+  --ink: #f4eee6;
+  --muted: #9a8d7c;
+  --line: #2c261f;
+  --hover: #211c16;
+  --gold: #e4b34a;
+  --gold-dim: rgba(228, 179, 74, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 220px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 13px/1.3 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+
+header {
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+header p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+label {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+}
+
+label:hover,
+label:focus-within {
+  background: var(--hover);
+}
+
+label:has(input:checked) {
+  background: var(--gold-dim);
+  border-left-color: var(--gold);
+}
+
+.name {
+  font-weight: 600;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+input[type='radio'] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
